@@ -2,12 +2,18 @@ name: 'app-backend-${APP_NAME}'
 
 x-app-env: &app-env
   env_file: ../.env
+  networks:
+    - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 services:
   postgres:
     <<: *app-env
     image: postgres:17
-    container_name: postgres-${APP_NAME}
+    container_name: ${APP_NAME}-postgres
     volumes:
       - pg-data:/var/lib/postgresql/data
     ports:
@@ -18,10 +24,23 @@ services:
       timeout: 5s
       retries: 10
 
+  pgadmin:
+    <<: *app-env
+    image: dpage/pgadmin4:latest
+    container_name: ${APP_NAME}-pgadmin
+    ports:
+      - '${PGADMIN_PORT}:80'
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   backend:
     <<: *app-env
     image: node:24-alpine
-    container_name: nest-server-${APP_NAME}
+    container_name: ${APP_NAME}-nest-server
     env_file: ../.env
     ports:
       - '${NEST_PORT}:${NEST_PORT}'
@@ -39,3 +58,5 @@ volumes:
     name: ${APP_NAME}-pg-data
   nest-node_modules:
     name: ${APP_NAME}-node_modules
+  pgadmin-data:
+    name: ${APP_NAME}-pgadmin-data
